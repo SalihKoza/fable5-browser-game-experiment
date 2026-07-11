@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hollowmere</title>
+    <style>
+      /* The page is a black void; the game canvas and DOM UI float in it. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0a0a0f;
+        overflow: hidden;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+      }
+      /* DOM UI layer (HUD, inventory) sits above the canvas — see ARCHITECTURE.md §1. */
+      #ui {
+        position: fixed;
+        inset: 0;
+        pointer-events: none; /* individual panels re-enable events themselves */
+        font-family: 'Georgia', serif;
+        color: #d8d2c4;
+      }
+      .debug-overlay {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        font: 12px/1.5 monospace;
+        color: #7fda89;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 4px 8px;
+        border-radius: 3px;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
