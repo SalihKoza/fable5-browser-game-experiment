@@ -41,6 +41,15 @@ export const HURT_TUNING = {
   flashMs: 90,
 } as const;
 
+export const LOOT_TUNING = {
+  /** Walk-over collection distance (px). */
+  pickupRadius: 12,
+  /** Chest interaction distance (px). */
+  interactRadius: 20,
+  /** Inventory capacity (slots, not items). */
+  inventorySlots: 12,
+} as const;
+
 export interface GhoulTuning {
   maxHealth: number;
   patrolSpeed: number;

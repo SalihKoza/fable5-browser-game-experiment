@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "healing_herb",
+      "name": "Healing Herb",
+      "description": "A bitter marsh herb. Restores 40 health.",
+      "maxStack": 5,
+      "color": "#5d8a4a",
+      "use": { "heal": 40 }
+    },
+    {
+      "id": "bone_charm",
+      "name": "Bone Charm",
+      "description": "A ghoul-carved trinket. Worth something, to someone.",
+      "maxStack": 10,
+      "color": "#d8d2c4"
+    },
+    {
+      "id": "grave_iron",
+      "name": "Grave Iron",
+      "description": "Cold metal scavenged from the ruins.",
+      "maxStack": 10,
+      "color": "#7a8699"
+    }
+  ]
+}

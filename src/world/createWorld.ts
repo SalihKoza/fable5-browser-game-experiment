@@ -10,6 +10,8 @@ export interface World {
   spawn: Vec2Like;
   /** Enemy spawn points (may legitimately be empty on a safe map). */
   enemySpawns: Vec2Like[];
+  /** Chest placements; id = Tiled object id (stable across runs → worldFlags). */
+  chestSpawns: { id: string; x: number; y: number }[];
   /** Pixel size of the whole map — used for camera & physics bounds. */
   widthPx: number;
   heightPx: number;
@@ -50,12 +52,17 @@ export function createWorld(scene: Phaser.Scene): World {
     .filter((o) => o.name === SpawnName.Ghoul && o.x != null && o.y != null)
     .map((o) => ({ x: o.x as number, y: o.y as number }));
 
+  const chestSpawns = objects
+    .filter((o) => o.name === SpawnName.Chest && o.x != null && o.y != null)
+    .map((o) => ({ id: String(o.id), x: o.x as number, y: o.y as number }));
+
   return {
     map,
     ground,
     walls,
     spawn: { x: playerObj.x, y: playerObj.y },
     enemySpawns,
+    chestSpawns,
     widthPx: map.widthInPixels,
     heightPx: map.heightInPixels,
   };

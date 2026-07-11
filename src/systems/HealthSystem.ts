@@ -82,8 +82,14 @@ export class HealthSystem implements GameSystem {
 
   private killEnemy(ctx: SystemContext, enemy: Actor): void {
     // Remove from simulation immediately; the corpse fade is pure presentation.
+    // Death position rides on the event — loot spawns where the body fell.
     ctx.actors.remove(enemy.id);
-    ctx.bus.emit(GameEvent.EnemyDied, { entityId: enemy.id, enemyType: enemy.kind });
+    ctx.bus.emit(GameEvent.EnemyDied, {
+      entityId: enemy.id,
+      enemyType: enemy.kind,
+      x: enemy.sprite.x,
+      y: enemy.sprite.y,
+    });
 
     const sprite = enemy.sprite;
     (sprite.body as Phaser.Physics.Arcade.Body).enable = false;

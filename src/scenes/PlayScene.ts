@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { AssetKey } from '../config/assets';
 import { GAME_CONFIG, SceneKey } from '../config/game';
 import {
   GHOUL_TUNING,
@@ -9,19 +10,26 @@ import {
 import { EventBus } from '../core/EventBus';
 import { GameEvent, type GameBus } from '../core/events';
 import { NULL_INPUT, type InputSnapshot } from '../core/input';
+import { createRng, type Rng } from '../core/rng';
 import { createNewGameState, type GameState } from '../core/state/GameState';
+import { parseItemCatalog, type ItemCatalog } from '../data/itemCatalog';
 import { ActorRegistry, type Actor } from '../entities/Actor';
+import { Chest } from '../entities/Chest';
 import { createGhoul, resetGhoulIds } from '../entities/Ghoul';
 import { createPlayer } from '../entities/Player';
 import { ActionMap } from '../input/ActionMap';
 import { AISystem } from '../systems/AISystem';
 import { CombatSystem } from '../systems/CombatSystem';
 import { HealthSystem } from '../systems/HealthSystem';
+import { InteractionSystem } from '../systems/InteractionSystem';
+import { ItemEffects } from '../systems/ItemEffects';
+import { LootSystem } from '../systems/LootSystem';
 import { MovementSystem } from '../systems/MovementSystem';
 import { StaminaSystem } from '../systems/StaminaSystem';
 import { createFrameScratch, type GameSystem } from '../systems/System';
 import { DebugOverlay } from '../ui/DebugOverlay';
 import { Hud } from '../ui/Hud';
+import { InventoryPanel } from '../ui/InventoryPanel';
 import { createWorld } from '../world/createWorld';
 
 /**
@@ -35,15 +43,22 @@ export class PlayScene extends Phaser.Scene {
   private actors!: ActorRegistry;
   private actionMap!: ActionMap;
   private player!: Actor;
+  private rng!: Rng;
+  private catalog!: ItemCatalog;
 
-  /** ★ THE system order (§5): AI → Combat → Stamina → Movement → Health.
-   *  AI/Combat request (damage events, stamina spend); Stamina/Movement act
-   *  on intents; Health resolves all damage last, in one place. */
+  /** ★ THE system order (§5):
+   *  AI → Combat → Stamina → Movement → Interaction → Loot → Health.
+   *  Requesters first (AI/Combat emit damage, request stamina), resource
+   *  owners act (Stamina/Movement), world interactions resolve
+   *  (Interaction/Loot), damage resolves last in one place (Health). */
   private gameSystems: GameSystem[] = [];
 
   private hud?: Hud;
   private debug?: DebugOverlay;
+  private inventoryPanel!: InventoryPanel;
   private lastInput: InputSnapshot = NULL_INPUT;
+  /** Simulation freeze while the inventory is open (§6: game-time pauses). */
+  private inventoryOpen = false;
   /** Set on PlayerDied: stops simulation during the death fade. */
   private ending = false;
 
@@ -53,10 +68,15 @@ export class PlayScene extends Phaser.Scene {
 
   create(): void {
     this.state = createNewGameState(Date.now());
+    this.rng = createRng(this.state.rngSeed);
     this.bus = new EventBus();
     this.actors = new ActorRegistry();
     this.ending = false;
+    this.inventoryOpen = false;
     resetGhoulIds();
+
+    // Item catalog: data asset, validated fail-loud at scene start (§10).
+    this.catalog = parseItemCatalog(this.cache.json.get(AssetKey.ItemsData));
 
     // -- World -----------------------------------------------------------
     const world = createWorld(this);
@@ -68,13 +88,17 @@ export class PlayScene extends Phaser.Scene {
     this.actors.add(this.player);
     this.state.player.position = { ...world.spawn };
 
-    // -- Enemies (spawn points are map DATA, §10) --------------------------
+    // -- Enemies & chests (spawn points are map DATA, §10) -----------------
     const enemyGroup = this.physics.add.group();
     for (const spawn of world.enemySpawns) {
       const ghoul = createGhoul(this, spawn.x, spawn.y, GHOUL_TUNING);
       this.actors.add(ghoul);
       enemyGroup.add(ghoul.sprite);
     }
+    const chests = world.chestSpawns.map(
+      (c) =>
+        new Chest(this, c.id, c.x, c.y, this.state.worldFlags[`chest:${c.id}`] === true),
+    );
 
     // -- Colliders (physical response is Arcade's job, §5) ----------------
     this.physics.add.collider(this.player.sprite, world.walls);
@@ -90,34 +114,48 @@ export class PlayScene extends Phaser.Scene {
     // -- Input & systems (ORDER MATTERS, §5) --------------------------------
     this.actionMap = new ActionMap(this);
     const healthSystem = new HealthSystem(this, this.bus);
+    const lootSystem = new LootSystem(this, this.catalog, this.bus);
     this.gameSystems = [
       new AISystem(),
       new CombatSystem(this, PLAYER_COMBAT_TUNING),
       new StaminaSystem(STAMINA_TUNING),
       new MovementSystem(MOVEMENT_TUNING),
+      new InteractionSystem(chests),
+      lootSystem,
       healthSystem,
     ];
+
+    // Event-driven services (not ticked): menu-time item use.
+    const itemEffects = new ItemEffects(this.catalog, this.bus, this.state, this.player);
 
     // -- Death flow (scene transitions are the scene's business, §6) --------
     this.bus.on(GameEvent.PlayerDied, ({ playTimeMs }) => this.onPlayerDied(playTimeMs));
 
     // -- UI ------------------------------------------------------------------
     this.hud = new Hud();
+    this.inventoryPanel = new InventoryPanel(this.state, this.catalog, this.bus);
     if (GAME_CONFIG.debugOverlay) this.debug = new DebugOverlay();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.hud?.destroy();
       this.debug?.destroy();
+      this.inventoryPanel.destroy();
       healthSystem.destroy();
+      lootSystem.destroy();
+      itemEffects.destroy();
       this.bus.clear(); // no stale handlers surviving into the next run
     });
   }
 
   override update(_time: number, delta: number): void {
     if (this.ending) return; // death fade: the world stands still
-    this.state.playTimeMs += delta;
 
-    // One snapshot per tick (§9); one scratch object per tick (§5).
+    // Input is sampled even while paused — the close-inventory key must work.
     this.lastInput = this.actionMap.snapshot();
+    if (this.lastInput.inventoryPressed) this.toggleInventory();
+
+    if (this.inventoryOpen) return; // simulation (and game-time) frozen
+
+    this.state.playTimeMs += delta;
     const ctx = {
       state: this.state,
       input: this.lastInput,
@@ -126,6 +164,7 @@ export class PlayScene extends Phaser.Scene {
       bus: this.bus,
       actors: this.actors,
       player: this.player,
+      rng: this.rng,
     };
     for (const system of this.gameSystems) system.update(ctx);
 
@@ -135,7 +174,20 @@ export class PlayScene extends Phaser.Scene {
       hp: Math.round(this.state.player.health),
       stamina: Math.round(this.state.player.stamina),
       enemies: this.actors.enemies().length,
+      items: this.state.player.inventory.reduce((n, s) => n + s.quantity, 0),
     });
+  }
+
+  private toggleInventory(): void {
+    this.inventoryOpen = !this.inventoryOpen;
+    if (this.inventoryOpen) {
+      this.physics.pause(); // bodies freeze mid-step; no drift while browsing
+      this.inventoryPanel.show();
+    } else {
+      this.physics.resume();
+      this.inventoryPanel.hide();
+      this.hud?.update(this.state); // reflect any potions used while paused
+    }
   }
 
   private onPlayerDied(playTimeMs: number): void {

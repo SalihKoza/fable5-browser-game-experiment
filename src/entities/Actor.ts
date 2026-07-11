@@ -18,6 +18,8 @@ export interface BrainContext {
   player: Actor;
   dtMs: number;
   bus: GameBus;
+  /** The run's seeded RNG stream (§6) — brains never touch Math.random. */
+  rng: () => number;
 }
 
 export interface Brain {

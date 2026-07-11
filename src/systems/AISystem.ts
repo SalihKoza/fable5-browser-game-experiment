@@ -18,6 +18,7 @@ export class AISystem implements GameSystem {
         player: ctx.player,
         dtMs: ctx.dtMs,
         bus: ctx.bus,
+        rng: ctx.rng,
       });
     }
   }

@@ -3,7 +3,9 @@
     { "key": "world-tiles", "url": "assets/sprites/world/tileset_placeholder.png" }
   ],
   "audio": [],
-  "data": [],
+  "data": [
+    { "key": "items", "url": "assets/data/items.json" }
+  ],
   "tilemaps": [
     { "key": "map-hollowmere", "url": "assets/data/map_hollowmere.json" }
   ]

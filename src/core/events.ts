@@ -14,7 +14,10 @@ export const GameEvent = {
   PlayerDamaged: 'player-damaged',
   EnemyDied: 'enemy-died',
   PlayerDied: 'player-died',
+  ChestOpened: 'chest-opened',
   ItemPickedUp: 'item-picked-up',
+  /** Inventory contents changed (pickup/use) — UI re-renders on this. */
+  InventoryChanged: 'inventory-changed',
   UiUseItem: 'ui-use-item',
 } as const;
 export type GameEvent = (typeof GameEvent)[keyof typeof GameEvent];
@@ -30,9 +33,12 @@ export interface GameEventPayloads extends Record<string, unknown> {
     knockbackForce: number;
   };
   [GameEvent.PlayerDamaged]: { amount: number; sourceId: string };
-  [GameEvent.EnemyDied]: { entityId: string; enemyType: string };
+  /** x/y = death position, captured before the sprite fades — loot spawns there. */
+  [GameEvent.EnemyDied]: { entityId: string; enemyType: string; x: number; y: number };
   [GameEvent.PlayerDied]: { playTimeMs: number };
+  [GameEvent.ChestOpened]: { chestId: string; x: number; y: number };
   [GameEvent.ItemPickedUp]: { itemId: string; quantity: number };
+  [GameEvent.InventoryChanged]: Record<string, never>;
   [GameEvent.UiUseItem]: { itemId: string };
 }
 

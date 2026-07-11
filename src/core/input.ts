@@ -11,6 +11,8 @@ export const Action = {
   MoveRight: 'move-right',
   Sprint: 'sprint',
   Attack: 'attack',
+  Interact: 'interact',
+  ToggleInventory: 'toggle-inventory',
 } as const;
 export type Action = (typeof Action)[keyof typeof Action];
 
@@ -23,8 +25,10 @@ export interface InputSnapshot {
   axisX: number;
   axisY: number;
   sprintHeld: boolean;
-  /** Edge-detected: true only on the tick the attack was pressed (§9). */
+  /** Edge-detected: true only on the tick the key was pressed (§9). */
   attackPressed: boolean;
+  interactPressed: boolean;
+  inventoryPressed: boolean;
 }
 
 export const NULL_INPUT: InputSnapshot = Object.freeze({
@@ -32,4 +36,6 @@ export const NULL_INPUT: InputSnapshot = Object.freeze({
   axisY: 0,
   sprintHeld: false,
   attackPressed: false,
+  interactPressed: false,
+  inventoryPressed: false,
 });

@@ -21,6 +21,12 @@ export function applyDamage(
   };
 }
 
+/** Healing counterpart to applyDamage — clamped at max, never resurrects. */
+export function applyHeal(health: HealthData, amount: number): HealthData {
+  if (health.current <= 0) return health; // dead is dead; items don't resurrect
+  return { ...health, current: Math.min(health.max, health.current + amount) };
+}
+
 /** Hurt-reaction timers. Transient runtime data — never saved (§8). */
 export interface HurtData {
   /** i-frames: while > 0, new damage is ignored (player only, by policy). */

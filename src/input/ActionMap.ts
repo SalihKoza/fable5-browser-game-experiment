@@ -17,6 +17,11 @@ const DEFAULT_BINDINGS: Record<Action, number[]> = {
   ],
   [Action.Sprint]: [Phaser.Input.Keyboard.KeyCodes.SHIFT],
   [Action.Attack]: [Phaser.Input.Keyboard.KeyCodes.J, Phaser.Input.Keyboard.KeyCodes.SPACE],
+  [Action.Interact]: [Phaser.Input.Keyboard.KeyCodes.E],
+  [Action.ToggleInventory]: [
+    Phaser.Input.Keyboard.KeyCodes.I,
+    Phaser.Input.Keyboard.KeyCodes.TAB,
+  ],
 };
 
 export class ActionMap {
@@ -29,6 +34,8 @@ export class ActionMap {
     this.pointer = scene.input.activePointer;
     const keyboard = scene.input.keyboard;
     if (!keyboard) return; // e.g. headless: NULL-like snapshots
+    // Tab would move browser focus out of the game — capture it (§9 hygiene).
+    keyboard.addCapture(Phaser.Input.Keyboard.KeyCodes.TAB);
     for (const [action, codes] of Object.entries(DEFAULT_BINDINGS)) {
       this.keys.set(
         action as Action,
@@ -56,6 +63,8 @@ export class ActionMap {
       axisY: (held(Action.MoveDown) ? 1 : 0) - (held(Action.MoveUp) ? 1 : 0),
       sprintHeld: held(Action.Sprint),
       attackPressed: justPressed(Action.Attack) || pointerJustDown,
+      interactPressed: justPressed(Action.Interact),
+      inventoryPressed: justPressed(Action.ToggleInventory),
     };
   }
 }

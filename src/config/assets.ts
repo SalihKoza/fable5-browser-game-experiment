@@ -5,9 +5,14 @@
 export const AssetKey = {
   WorldTiles: 'world-tiles',
   MapHollowmere: 'map-hollowmere',
+  /** items.json — the item catalog (validated in data/itemCatalog.ts). */
+  ItemsData: 'items',
   /** Generated at runtime by entity factories (placeholder pipeline, §10). */
   PlayerTexture: 'player-placeholder',
   GhoulTexture: 'ghoul-placeholder',
+  ChestTexture: 'chest-placeholder',
+  ChestOpenTexture: 'chest-open-placeholder',
+  PickupTexture: 'pickup-placeholder',
 } as const;
 export type AssetKey = (typeof AssetKey)[keyof typeof AssetKey];
 
@@ -22,4 +27,5 @@ export const MapLayer = {
 export const SpawnName = {
   Player: 'player',
   Ghoul: 'ghoul',
+  Chest: 'chest',
 } as const;

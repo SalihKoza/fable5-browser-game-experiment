@@ -146,6 +146,18 @@ def build_map(path: Path) -> None:
                         }
                         for i, (gx, gy) in enumerate([(12, 8), (31, 12), (15, 15)])
                     ],
+                    # Chests: one guarded inside the ruin (by the ghoul at 12,8),
+                    # one tucked in the far south-east corner. Object ids are the
+                    # chests' stable identity for worldFlags/saves.
+                    *[
+                        {
+                            "id": 5 + i, "name": "chest", "type": "spawn",
+                            "x": cx * TILE + TILE // 2, "y": cy * TILE + TILE // 2,
+                            "width": 0, "height": 0, "point": True,
+                            "rotation": 0, "visible": True,
+                        }
+                        for i, (cx, cy) in enumerate([(13, 9), (36, 19)])
+                    ],
                 ],
             },
         ],

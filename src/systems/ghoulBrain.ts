@@ -12,6 +12,7 @@ import type { Brain, BrainContext } from '../entities/Actor';
  *
  * Perception is distance-based for now; line-of-sight raycasts arrive with
  * the darkness mechanic in Phase 4, where they become meaningful.
+ * Patrol randomness draws from the seeded run RNG via ctx.rng (Phase 3).
  */
 export function createGhoulBrain(cfg: GhoulTuning): Brain {
   const fsm = new Fsm<BrainContext>(
@@ -32,9 +33,10 @@ export function createGhoulBrain(cfg: GhoulTuning): Brain {
         onEnter: (ctx) => {
           // Wander near HOME, not near wherever the last chase ended —
           // this passively walks leashed ghouls back to their posts.
+          // Randomness comes from the run's seeded stream (§6), never Math.random.
           const { home } = ai(ctx);
-          const angle = Math.random() * Math.PI * 2;
-          const r = cfg.patrolRadius * (0.4 + Math.random() * 0.6);
+          const angle = ctx.rng() * Math.PI * 2;
+          const r = cfg.patrolRadius * (0.4 + ctx.rng() * 0.6);
           ai(ctx).patrolTarget = {
             x: home.x + Math.cos(angle) * r,
             y: home.y + Math.sin(angle) * r,

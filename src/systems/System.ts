@@ -24,6 +24,9 @@ export interface SystemContext {
   bus: GameBus;
   actors: ActorRegistry;
   player: Actor;
+  /** The run's seeded RNG stream (§6): loot rolls & AI draw from here so a
+   *  run is reproducible from GameState.rngSeed alone. */
+  rng: () => number;
 }
 
 /**
