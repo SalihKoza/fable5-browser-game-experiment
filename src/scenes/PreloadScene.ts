@@ -6,6 +6,7 @@ interface AssetManifest {
   images: { key: string; url: string }[];
   audio: { key: string; url: string }[];
   data: { key: string; url: string }[];
+  tilemaps: { key: string; url: string }[];
 }
 
 /**
@@ -27,6 +28,7 @@ export class PreloadScene extends Phaser.Scene {
       for (const img of manifest.images) this.load.image(img.key, img.url);
       for (const snd of manifest.audio) this.load.audio(snd.key, snd.url);
       for (const dat of manifest.data) this.load.json(dat.key, dat.url);
+      for (const tm of manifest.tilemaps) this.load.tilemapTiledJSON(tm.key, tm.url);
     });
   }
 

@@ -1,5 +1,3 @@
 {
-  "images": [],
-  "audio": [],
-  "data": []
-}
+  "images": [
+    { "key": "world-tiles", "url

@@ -27,7 +27,7 @@ new Phaser.Game({
       // Fixed-step simulation so gameplay speed never depends on refresh rate (§7).
       fixedStep: true,
       fps: GAME_CONFIG.physicsFps,
-      debug: GAME_CONFIG.debug,
+      debug: GAME_CONFIG.debugPhysics,
     },
   },
   // Scene order matters: the first scene auto-starts the flow FSM (§6).
