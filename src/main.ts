@@ -9,6 +9,7 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MenuScene } from './scenes/MenuScene';
 import { PlayScene } from './scenes/PlayScene';
+import { DeadScene } from './scenes/DeadScene';
 
 new Phaser.Game({
   parent: 'game',
@@ -31,5 +32,5 @@ new Phaser.Game({
     },
   },
   // Scene order matters: the first scene auto-starts the flow FSM (§6).
-  scene: [BootScene, PreloadScene, MenuScene, PlayScene],
+  scene: [BootScene, PreloadScene, MenuScene, PlayScene, DeadScene],
 });

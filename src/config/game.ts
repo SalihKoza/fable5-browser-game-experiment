@@ -20,5 +20,6 @@ export const SceneKey = {
   Preload: 'Preload',
   Menu: 'Menu',
   Play: 'Play',
+  Dead: 'Dead',
 } as const;
 export type SceneKey = (typeof SceneKey)[keyof typeof SceneKey];

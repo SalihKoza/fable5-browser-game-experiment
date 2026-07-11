@@ -134,7 +134,18 @@ def build_map(path: Path) -> None:
                         "x": 5 * TILE, "y": 8 * TILE,
                         "width": 0, "height": 0, "point": True,
                         "rotation": 0, "visible": True,
-                    }
+                    },
+                    # Ghouls guard the ruin interior, the open east field, and
+                    # the south passage — all verified to be on clear floor.
+                    *[
+                        {
+                            "id": 2 + i, "name": "ghoul", "type": "spawn",
+                            "x": gx * TILE + TILE // 2, "y": gy * TILE + TILE // 2,
+                            "width": 0, "height": 0, "point": True,
+                            "rotation": 0, "visible": True,
+                        }
+                        for i, (gx, gy) in enumerate([(12, 8), (31, 12), (15, 15)])
+                    ],
                 ],
             },
         ],

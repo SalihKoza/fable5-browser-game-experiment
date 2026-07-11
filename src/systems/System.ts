@@ -1,5 +1,7 @@
+import type { GameBus } from '../core/events';
 import type { InputSnapshot } from '../core/input';
 import type { GameState } from '../core/state/GameState';
+import type { Actor, ActorRegistry } from '../entities/Actor';
 
 /**
  * Per-tick scratch data passed between systems (ARCHITECTURE.md §5).
@@ -9,6 +11,8 @@ import type { GameState } from '../core/state/GameState';
 export interface FrameScratch {
   /** Decided by StaminaSystem, consumed by MovementSystem. */
   sprinting: boolean;
+  /** Requested by CombatSystem (attack cost), applied by StaminaSystem. */
+  staminaSpend: number;
 }
 
 export interface SystemContext {
@@ -16,6 +20,10 @@ export interface SystemContext {
   input: InputSnapshot;
   dtMs: number;
   frame: FrameScratch;
+  /** Typed event bus — the only inter-system channel besides frame (§4). */
+  bus: GameBus;
+  actors: ActorRegistry;
+  player: Actor;
 }
 
 /**
@@ -29,5 +37,5 @@ export interface GameSystem {
 }
 
 export function createFrameScratch(): FrameScratch {
-  return { sprinting: false };
+  return { sprinting: false, staminaSpend: 0 };
 }

@@ -5,8 +5,9 @@
 export const AssetKey = {
   WorldTiles: 'world-tiles',
   MapHollowmere: 'map-hollowmere',
-  /** Generated at runtime by the Player factory (placeholder pipeline, §10). */
+  /** Generated at runtime by entity factories (placeholder pipeline, §10). */
   PlayerTexture: 'player-placeholder',
+  GhoulTexture: 'ghoul-placeholder',
 } as const;
 export type AssetKey = (typeof AssetKey)[keyof typeof AssetKey];
 
@@ -15,4 +16,10 @@ export const MapLayer = {
   Ground: 'ground',
   Walls: 'walls',
   Spawns: 'spawns',
+} as const;
+
+/** Object names on the spawns layer. */
+export const SpawnName = {
+  Player: 'player',
+  Ghoul: 'ghoul',
 } as const;

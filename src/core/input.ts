@@ -1,8 +1,7 @@
 /**
  * Input PORT (framework-free). Gameplay code consumes this shape and never
  * sees key codes — the Phaser ADAPTER lives in src/input/ActionMap.ts
- * (ARCHITECTURE.md §9). Only actions Phase 1 uses are declared; the catalogue
- * grows with the roadmap.
+ * (ARCHITECTURE.md §9). Only actions the game currently uses are declared.
  */
 
 export const Action = {
@@ -11,6 +10,7 @@ export const Action = {
   MoveLeft: 'move-left',
   MoveRight: 'move-right',
   Sprint: 'sprint',
+  Attack: 'attack',
 } as const;
 export type Action = (typeof Action)[keyof typeof Action];
 
@@ -23,10 +23,13 @@ export interface InputSnapshot {
   axisX: number;
   axisY: number;
   sprintHeld: boolean;
+  /** Edge-detected: true only on the tick the attack was pressed (§9). */
+  attackPressed: boolean;
 }
 
 export const NULL_INPUT: InputSnapshot = Object.freeze({
   axisX: 0,
   axisY: 0,
   sprintHeld: false,
+  attackPressed: false,
 });

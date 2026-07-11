@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
-import { AssetKey, MapLayer } from '../config/assets';
+import { AssetKey, MapLayer, SpawnName } from '../config/assets';
+import type { Vec2Like } from '../core/state/GameState';
 
 export interface World {
   map: Phaser.Tilemaps.Tilemap;
   ground: Phaser.Tilemaps.TilemapLayer;
   walls: Phaser.Tilemaps.TilemapLayer;
   /** Player spawn point read from the Tiled object layer. */
-  spawn: { x: number; y: number };
+  spawn: Vec2Like;
+  /** Enemy spawn points (may legitimately be empty on a safe map). */
+  enemySpawns: Vec2Like[];
   /** Pixel size of the whole map — used for camera & physics bounds. */
   widthPx: number;
   heightPx: number;
@@ -14,7 +17,7 @@ export interface World {
 
 /**
  * Builds the world from the Tiled map (ARCHITECTURE.md §10). The map file is
- * DATA: layer names and the spawn object are the contract (config/assets.ts);
+ * DATA: layer names and spawn objects are the contract (config/assets.ts);
  * level design changes never touch code. Fails loudly if the contract is
  * broken — a silent fallback spawn would hide a broken map for weeks.
  */
@@ -35,20 +38,24 @@ export function createWorld(scene: Phaser.Scene): World {
     throw new Error('World: expected CPU tilemap layers ground/walls');
   }
 
-  // Tiles 3 & 4 (stone / cracked stone) are solid — declared once, here.
+  // Tiles 3 & 4 (stone / mossy stone) are solid — declared once, here.
   walls.setCollision([3, 4]);
 
-  const spawnObj = map
-    .getObjectLayer(MapLayer.Spawns)
-    ?.objects.find((o) => o.name === 'player');
-  if (spawnObj?.x == null || spawnObj?.y == null)
+  const objects = map.getObjectLayer(MapLayer.Spawns)?.objects ?? [];
+  const playerObj = objects.find((o) => o.name === SpawnName.Player);
+  if (playerObj?.x == null || playerObj?.y == null)
     throw new Error('World: spawn object "player" missing from map');
+
+  const enemySpawns = objects
+    .filter((o) => o.name === SpawnName.Ghoul && o.x != null && o.y != null)
+    .map((o) => ({ x: o.x as number, y: o.y as number }));
 
   return {
     map,
     ground,
     walls,
-    spawn: { x: spawnObj.x, y: spawnObj.y },
+    spawn: { x: playerObj.x, y: playerObj.y },
+    enemySpawns,
     widthPx: map.widthInPixels,
     heightPx: map.heightInPixels,
   };
