@@ -31,10 +31,13 @@ export interface Drone {
   stop(): void;
 }
 
+const MASTER_VOLUME = 0.5;
+
 export class Synth {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private failed = false;
+  private muted = false;
 
   /** Lazily create/resume. Returns null when audio is unavailable — every
    *  caller degrades to silence rather than crashing the game. */
@@ -44,7 +47,7 @@ export class Synth {
       try {
         this.ctx = new AudioContext();
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.5;
+        this.master.gain.value = this.muted ? 0 : MASTER_VOLUME;
         this.master.connect(this.ctx.destination);
       } catch {
         this.failed = true;
@@ -132,6 +135,18 @@ export class Synth {
         oscB.stop(ctx.currentTime + 0.5);
       },
     };
+  }
+
+  /** Mute at the master bus — the drone keeps "playing" silently, so
+   *  unmuting mid-run resumes exactly the right ambience. */
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (this.ctx && this.master) {
+      this.master.gain.linearRampToValueAtTime(
+        muted ? 0 : MASTER_VOLUME,
+        this.ctx.currentTime + 0.1,
+      );
+    }
   }
 
   destroy(): void {

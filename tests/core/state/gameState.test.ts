@@ -17,6 +17,7 @@ describe('createNewGameState', () => {
     expect(s.player.health).toBe(s.player.maxHealth);
     expect(s.player.stamina).toBe(s.player.maxStamina);
     expect(s.player.inventory).toEqual([]);
+    expect(s.stats.kills).toBe(0);
     expect(s.playTimeMs).toBe(0);
   });
 

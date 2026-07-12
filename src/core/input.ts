@@ -13,6 +13,8 @@ export const Action = {
   Attack: 'attack',
   Interact: 'interact',
   ToggleInventory: 'toggle-inventory',
+  QuickHeal: 'quick-heal',
+  ToggleMute: 'toggle-mute',
 } as const;
 export type Action = (typeof Action)[keyof typeof Action];
 
@@ -29,6 +31,8 @@ export interface InputSnapshot {
   attackPressed: boolean;
   interactPressed: boolean;
   inventoryPressed: boolean;
+  quickHealPressed: boolean;
+  mutePressed: boolean;
 }
 
 export const NULL_INPUT: InputSnapshot = Object.freeze({
@@ -38,4 +42,6 @@ export const NULL_INPUT: InputSnapshot = Object.freeze({
   attackPressed: false,
   interactPressed: false,
   inventoryPressed: false,
+  quickHealPressed: false,
+  mutePressed: false,
 });

@@ -42,6 +42,18 @@ export class HealthSystem implements GameSystem {
     // 1. Tick hurt timers for everyone (i-frames, knockback ownership).
     for (const actor of ctx.actors.all()) actor.hurt = stepHurt(actor.hurt, ctx.dtMs);
 
+    // I-frame readability: the player blinks while invulnerable — the rule
+    // is useless if the player can't SEE it. (Player only; wraiths manage
+    // their own alpha as part of their retreat behavior.)
+    const player = ctx.player;
+    player.sprite.setAlpha(
+      isInvulnerable(player.hurt)
+        ? Math.floor(player.hurt.invulnerableRemainingMs / 80) % 2 === 0
+          ? 0.35
+          : 1
+        : 1,
+    );
+
     // 2. Resolve this tick's damage queue.
     for (const e of this.queue.splice(0)) this.resolve(ctx, e);
 
@@ -84,6 +96,7 @@ export class HealthSystem implements GameSystem {
     // Remove from simulation immediately; the corpse fade is pure presentation.
     // Death position rides on the event — loot spawns where the body fell.
     ctx.actors.remove(enemy.id);
+    ctx.state.stats.kills += 1; // HealthSystem is the death authority (§5)
     ctx.bus.emit(GameEvent.EnemyDied, {
       entityId: enemy.id,
       enemyType: enemy.kind,

@@ -1,8 +1,10 @@
+import { countItem } from '../core/inventory';
 import type { GameState } from '../core/state/GameState';
 
 /**
  * DOM HUD (ARCHITECTURE.md §1): reads GameState, never mutates it (§6).
- * Health (Phase 2) + stamina (Phase 1) bars.
+ * Health + stamina bars, plus a healing-herb counter (the one consumable
+ * that matters moment-to-moment, with its quick-use key).
  */
 interface Bar {
   fill: HTMLDivElement;
@@ -12,12 +14,19 @@ export class Hud {
   private readonly root: HTMLDivElement;
   private readonly health: Bar;
   private readonly stamina: Bar;
+  private readonly herbs: HTMLDivElement;
 
   constructor() {
     this.root = document.createElement('div');
     this.root.style.cssText = 'position:absolute;left:16px;bottom:14px;width:140px;';
     this.health = this.makeBar('health', '#8a2f2f');
     this.stamina = this.makeBar('stamina', '#5d8a4a');
+
+    this.herbs = document.createElement('div');
+    this.herbs.style.cssText =
+      'font:10px monospace;color:#6b6558;margin-top:6px;letter-spacing:1px;';
+    this.root.appendChild(this.herbs);
+
     document.getElementById('ui')?.appendChild(this.root);
   }
 
@@ -29,6 +38,9 @@ export class Hud {
     this.stamina.fill.style.width = `${stPct}%`;
     // Low-stamina tint also telegraphs the sprint-restart threshold.
     this.stamina.fill.style.background = stPct < 15 ? '#8a2f2f' : '#5d8a4a';
+
+    const herbCount = countItem(state.player.inventory, 'healing_herb');
+    this.herbs.textContent = herbCount > 0 ? `herbs ×${herbCount} — H to use` : '';
   }
 
   destroy(): void {

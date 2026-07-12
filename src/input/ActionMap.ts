@@ -22,6 +22,8 @@ const DEFAULT_BINDINGS: Record<Action, number[]> = {
     Phaser.Input.Keyboard.KeyCodes.I,
     Phaser.Input.Keyboard.KeyCodes.TAB,
   ],
+  [Action.QuickHeal]: [Phaser.Input.Keyboard.KeyCodes.H],
+  [Action.ToggleMute]: [Phaser.Input.Keyboard.KeyCodes.M],
 };
 
 export class ActionMap {
@@ -65,6 +67,8 @@ export class ActionMap {
       attackPressed: justPressed(Action.Attack) || pointerJustDown,
       interactPressed: justPressed(Action.Interact),
       inventoryPressed: justPressed(Action.ToggleInventory),
+      quickHealPressed: justPressed(Action.QuickHeal),
+      mutePressed: justPressed(Action.ToggleMute),
     };
   }
 }

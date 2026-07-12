@@ -8,8 +8,8 @@ export const GAME_CONFIG = {
   height: 270,
   /** Fixed simulation rate for Arcade Physics (framerate independence). */
   physicsFps: 60,
-  /** Show the fps/debug overlay. Flip off for "release" builds. */
-  debugOverlay: true,
+  /** Show the fps/debug overlay. Off for the v1.0 slice; flip on to tune. */
+  debugOverlay: false,
   /** Draw arcade physics bodies — noisy; enable only when debugging collision. */
   debugPhysics: false,
 } as const;

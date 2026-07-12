@@ -14,6 +14,8 @@ import { EventBus } from '../core/EventBus';
 import { GameEvent, type GameBus } from '../core/events';
 import { NULL_INPUT, type InputSnapshot } from '../core/input';
 import { createRng, type Rng } from '../core/rng';
+import { SaveManager } from '../core/save/SaveManager';
+import { loadSettings, saveSettings, type Settings } from '../core/settings';
 import { createNewGameState, type GameState } from '../core/state/GameState';
 import { zoneAt, type ZoneId } from '../core/zones';
 import { parseItemCatalog, type ItemCatalog } from '../data/itemCatalog';
@@ -58,6 +60,9 @@ export class PlayScene extends Phaser.Scene {
   private rng!: Rng;
   private catalog!: ItemCatalog;
   private world!: World;
+  private saves!: SaveManager;
+  private settings!: Settings;
+  private continueRun = false;
 
   /** ★ THE system order (§5):
    *  AI → Combat → Stamina → Movement → Interaction → Loot → Health. */
@@ -80,8 +85,19 @@ export class PlayScene extends Phaser.Scene {
     super(SceneKey.Play);
   }
 
+  init(data: { continue?: boolean }): void {
+    this.continueRun = data.continue === true;
+  }
+
   create(): void {
-    this.state = createNewGameState(Date.now());
+    this.saves = new SaveManager(window.localStorage);
+    this.settings = loadSettings(window.localStorage);
+
+    // Continue = restore the serializable state; everything runtime (sprites,
+    // enemies, lights) is rebuilt from it + the map. Enemies respawn by
+    // design (ADR-002); opened chests persist via worldFlags.
+    const loaded = this.continueRun ? this.saves.load() : null;
+    this.state = loaded ?? createNewGameState(Date.now());
     this.rng = createRng(this.state.rngSeed);
     this.bus = new EventBus();
     this.actors = new ActorRegistry();
@@ -98,10 +114,11 @@ export class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.world.widthPx, this.world.heightPx);
 
     // -- Player ----------------------------------------------------------
-    this.player = createPlayer(this, this.world.spawn.x, this.world.spawn.y, this.state);
+    const spawn = loaded ? this.state.player.position : this.world.spawn;
+    this.player = createPlayer(this, spawn.x, spawn.y, this.state);
     this.player.sprite.setCollideWorldBounds(true);
     this.actors.add(this.player);
-    this.state.player.position = { ...this.world.spawn };
+    this.state.player.position = { ...spawn };
 
     // -- Enemies & chests (spawn points are map DATA, §10) -----------------
     const enemyGroup = this.physics.add.group();
@@ -151,14 +168,22 @@ export class PlayScene extends Phaser.Scene {
 
     // Event-driven services (not ticked): menu-time item use, audio scoring.
     const itemEffects = new ItemEffects(this.catalog, this.bus, this.state, this.player);
-    this.audio = new AudioDirector(this.bus);
+    this.audio = new AudioDirector(this.bus, this.settings.muted);
 
     // -- Atmosphere (presentation; reads world, never mutates it, §7) -------
     this.currentZone =
-      zoneAt(this.world.zones, this.world.spawn.x, this.world.spawn.y) ?? DEFAULT_ZONE;
+      zoneAt(this.world.zones, spawn.x, spawn.y) ?? DEFAULT_ZONE;
     this.lighting = new LightingOverlay(this, ZONE_TUNING[this.currentZone].ambient);
     this.fog = new FogLayer(this);
     this.audio.setZone(this.currentZone);
+
+    // -- Game feel: screen feedback on the two loudest events ----------------
+    this.bus.on(GameEvent.PlayerDamaged, () => this.cameras.main.shake(90, 0.006));
+    this.bus.on(GameEvent.EnemyDied, () => this.cameras.main.shake(60, 0.0025));
+
+    // -- Autosave (§8): checkpoint moments, but never mid-hunt ---------------
+    this.bus.on(GameEvent.ChestOpened, () => this.trySave());
+    this.bus.on(GameEvent.EnemyDied, () => this.trySave());
 
     // -- Death flow (scene transitions are the scene's business, §6) --------
     this.bus.on(GameEvent.PlayerDied, ({ playTimeMs }) => this.onPlayerDied(playTimeMs));
@@ -187,6 +212,10 @@ export class PlayScene extends Phaser.Scene {
     // Input is sampled even while paused — the close-inventory key must work.
     this.lastInput = this.actionMap.snapshot();
     if (this.lastInput.inventoryPressed) this.toggleInventory();
+    if (this.lastInput.mutePressed) this.toggleMute();
+    // Quick-heal works even in the inventory (it IS a menu-time action).
+    if (this.lastInput.quickHealPressed)
+      this.bus.emit(GameEvent.UiUseItem, { itemId: 'healing_herb' });
 
     if (!this.inventoryOpen) {
       this.state.playTimeMs += delta;
@@ -217,7 +246,7 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  /** Zone changes drive ambient light, fog and the audio drone. */
+  /** Zone changes drive ambient light, fog, the audio drone — and a save. */
   private trackZone(): void {
     const zone =
       zoneAt(this.world.zones, this.player.sprite.x, this.player.sprite.y) ?? DEFAULT_ZONE;
@@ -225,6 +254,23 @@ export class PlayScene extends Phaser.Scene {
     this.currentZone = zone;
     this.lighting.setTargetAmbient(ZONE_TUNING[zone].ambient);
     this.audio.setZone(zone);
+    this.trySave();
+  }
+
+  /** Autosave gate (§8): only at calm moments — a save mid-hunt would let
+   *  players quit-reload their way out of every mistake. */
+  private trySave(): void {
+    if (this.ending) return;
+    const calm = this.actors
+      .enemies()
+      .every((e) => !e.brain || e.brain.state === 'idle' || e.brain.state === 'patrol');
+    if (calm) this.saves.save(this.state);
+  }
+
+  private toggleMute(): void {
+    this.settings = { ...this.settings, muted: !this.settings.muted };
+    this.audio.setMuted(this.settings.muted);
+    saveSettings(window.localStorage, this.settings);
   }
 
   private updateAtmosphere(delta: number): void {
@@ -255,11 +301,13 @@ export class PlayScene extends Phaser.Scene {
   private onPlayerDied(playTimeMs: number): void {
     if (this.ending) return;
     this.ending = true;
+    this.saves.clear(); // runs are mortal (ADR-002)
     this.player.sprite.setVelocity(0, 0);
     this.player.sprite.setTint(0x555555);
+    this.player.sprite.setAlpha(1);
     this.cameras.main.fadeOut(700, 5, 5, 7);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start(SceneKey.Dead, { playTimeMs });
+      this.scene.start(SceneKey.Dead, { playTimeMs, kills: this.state.stats.kills });
     });
   }
 }

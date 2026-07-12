@@ -27,14 +27,21 @@ export interface PlayerState {
   inventory: InventorySlot[];
 }
 
+export interface RunStats {
+  kills: number;
+}
+
 export interface GameState {
-  /** Save-file schema version — bump + write a migration when the shape changes (§8). */
+  /** Save-file schema version — bump + write a migration (core/save/migrations)
+   *  whenever this SHAPE changes after v1.0. `stats` was added before the
+   *  first save ever shipped, so v1 remains the first public schema. */
   schemaVersion: 1;
   /** Seed for the run's RNG so loot rolls are reproducible after load. */
   rngSeed: number;
   player: PlayerState;
   /** World facts that must survive save/load: opened chests, permanent kills, etc. */
   worldFlags: Record<string, boolean>;
+  stats: RunStats;
   playTimeMs: number;
 }
 
@@ -54,6 +61,7 @@ export function createNewGameState(rngSeed: number): GameState {
       inventory: [],
     },
     worldFlags: {},
+    stats: { kills: 0 },
     playTimeMs: 0,
   };
 }

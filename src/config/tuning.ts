@@ -14,7 +14,7 @@ export const MOVEMENT_TUNING: MovementConfig = {
 export const STAMINA_TUNING: StaminaConfig = {
   max: 100,
   drainPerSecond: 30,
-  regenPerSecond: 22,
+  regenPerSecond: 24, // v1.0 balance: 22 → 24, less downtime between fights
   regenDelayMs: 700,
   restartThreshold: 15,
 };
@@ -24,7 +24,7 @@ export const PLAYER_COMBAT_TUNING = {
   cooldownMs: 420,
   /** Press slightly early and the swing still fires when ready (§9). */
   bufferMs: 150,
-  staminaCost: 15,
+  staminaCost: 12, // v1.0 balance: 15 → 12, ~8 swings on a full bar
   /** Hitbox center = player position + facing * reach. */
   reach: 14,
   hitboxWidth: 18,

@@ -14,7 +14,8 @@ export class AudioDirector {
   private readonly drone: Drone;
   private readonly unsubscribes: (() => void)[];
 
-  constructor(bus: GameBus) {
+  constructor(bus: GameBus, muted = false) {
+    this.synth.setMuted(muted);
     this.drone = this.synth.startDrone();
 
     this.unsubscribes = [
@@ -44,6 +45,10 @@ export class AudioDirector {
   /** Darker zones press the drone harder — the soundtrack IS the zone data. */
   setZone(zone: ZoneId): void {
     this.drone.setIntensity(ZONE_TUNING[zone].droneGain);
+  }
+
+  setMuted(muted: boolean): void {
+    this.synth.setMuted(muted);
   }
 
   destroy(): void {
