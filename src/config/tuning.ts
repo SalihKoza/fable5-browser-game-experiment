@@ -4,6 +4,7 @@
  */
 import type { MovementConfig } from '../core/movement';
 import type { StaminaConfig } from '../core/stamina';
+import type { ZoneId } from '../core/zones';
 
 export const MOVEMENT_TUNING: MovementConfig = {
   walkSpeed: 70,
@@ -84,3 +85,44 @@ export const GHOUL_TUNING: GhoulTuning = {
   idlePauseMs: 1100,
   patrolRadius: 48,
 };
+
+/** Wraith: fast, fragile, hit-and-run (see systems/wraithBrain.ts). */
+export interface WraithTuning extends GhoulTuning {
+  /** How long it slips away after a strike. */
+  retreatMs: number;
+  retreatSpeed: number;
+}
+
+export const WRAITH_TUNING: WraithTuning = {
+  maxHealth: 30,
+  patrolSpeed: 30,
+  chaseSpeed: 78,
+  aggroRadius: 110,
+  leashRadius: 190,
+  attackRange: 16,
+  strikeRange: 24,
+  windupMs: 200,
+  recoverMs: 200, // unused by wraith brain (retreat replaces recover), kept for shape
+  damage: 10,
+  knockbackForce: 120,
+  idlePauseMs: 800,
+  patrolRadius: 60,
+  retreatMs: 420,
+  retreatSpeed: 65,
+};
+
+/** Per-zone atmosphere + perception (§7): the zone IS the difficulty dial. */
+export const ZONE_TUNING: Record<
+  ZoneId,
+  { ambient: number; sightScale: number; fog: boolean; droneGain: number }
+> = {
+  ruins: { ambient: 0.5, sightScale: 1, fog: false, droneGain: 0.35 },
+  forest: { ambient: 0.62, sightScale: 0.75, fog: true, droneGain: 0.55 },
+  hollow: { ambient: 0.88, sightScale: 0.55, fog: false, droneGain: 0.85 },
+};
+
+export const LIGHT_TUNING = {
+  /** The player's torch — in the hollow, this radius is your life. */
+  torchRadius: 78,
+  brazierRadius: 58,
+} as const;

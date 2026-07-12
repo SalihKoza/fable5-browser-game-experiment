@@ -13,6 +13,18 @@ export const GHOUL_LOOT: LootTable = [
   { itemId: 'bone_charm', chance: 0.35, min: 1, max: 2 },
 ];
 
+/** Wraiths carry the hollow's cold metal, rarely anything living. */
+export const WRAITH_LOOT: LootTable = [
+  { itemId: 'grave_iron', chance: 0.8, min: 1, max: 2 },
+  { itemId: 'healing_herb', chance: 0.2, min: 1, max: 1 },
+];
+
+/** EnemyDied.enemyType → table. New enemy = one entry here (data, not code). */
+export const LOOT_BY_ENEMY: Readonly<Record<string, LootTable>> = {
+  ghoul: GHOUL_LOOT,
+  wraith: WRAITH_LOOT,
+};
+
 /** Chests are guarded rewards — strictly better than a ghoul's pockets. */
 export const CHEST_LOOT: LootTable = [
   { itemId: 'healing_herb', chance: 1.0, min: 1, max: 2 },

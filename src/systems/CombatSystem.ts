@@ -52,6 +52,7 @@ export class CombatSystem implements GameSystem {
     this.bufferMs = 0;
     this.cooldownMs = this.cfg.cooldownMs;
     ctx.frame.staminaSpend += this.cfg.staminaCost;
+    ctx.bus.emit(GameEvent.PlayerAttacked, {}); // audio/FX hook — hit or miss
 
     const { facing, sprite } = ctx.player;
     const cx = sprite.x + facing.x * this.cfg.reach;

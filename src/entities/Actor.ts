@@ -11,7 +11,7 @@ import type { Vec2Like } from '../core/state/GameState';
  * Runtime-only by design: Actors hold sprites, so they are NOT serializable.
  * Whatever must survive a save mirrors into GameState (player health/position).
  */
-export type ActorKind = 'player' | 'ghoul';
+export type ActorKind = 'player' | 'ghoul' | 'wraith';
 
 export interface BrainContext {
   self: Actor;
@@ -20,6 +20,11 @@ export interface BrainContext {
   bus: GameBus;
   /** The run's seeded RNG stream (§6) — brains never touch Math.random. */
   rng: () => number;
+  /** Computed by AISystem: tile line-of-sight to the player (walls block). */
+  canSeePlayer: boolean;
+  /** Zone darkness sight multiplier (1 = full sight). AISystem feeds 1 to
+   *  wraiths — they see in the dark; walls still apply via canSeePlayer. */
+  aggroScale: number;
 }
 
 export interface Brain {

@@ -10,6 +10,7 @@ export const AssetKey = {
   /** Generated at runtime by entity factories (placeholder pipeline, §10). */
   PlayerTexture: 'player-placeholder',
   GhoulTexture: 'ghoul-placeholder',
+  WraithTexture: 'wraith-placeholder',
   ChestTexture: 'chest-placeholder',
   ChestOpenTexture: 'chest-open-placeholder',
   PickupTexture: 'pickup-placeholder',
@@ -21,11 +22,14 @@ export const MapLayer = {
   Ground: 'ground',
   Walls: 'walls',
   Spawns: 'spawns',
+  Zones: 'zones',
 } as const;
 
 /** Object names on the spawns layer. */
 export const SpawnName = {
   Player: 'player',
   Ghoul: 'ghoul',
+  Wraith: 'wraith',
   Chest: 'chest',
+  Light: 'light',
 } as const;

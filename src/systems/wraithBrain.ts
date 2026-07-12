@@ -1,20 +1,20 @@
-import type { GhoulTuning } from '../config/tuning';
+import type { WraithTuning } from '../config/tuning';
 import { GameEvent } from '../core/events';
 import { Fsm } from '../core/fsm';
 import type { Vec2Like } from '../core/state/GameState';
 import type { Brain, BrainContext } from '../entities/Actor';
 
 /**
- * Ghoul AI: idle → patrol → chase → windup → recover (ARCHITECTURE.md §5),
- * built on the generic core/fsm. The brain is the only place that decides
- * what a ghoul WANTS; damage still flows through the event bus and is applied
- * by HealthSystem alone.
+ * Wraith AI: hit-and-run — idle → patrol → chase → windup → strike → RETREAT
+ * → chase. The retreat is what differentiates it from the ghoul: wraiths
+ * never stand and trade, so the player must chase or reposition.
  *
- * Perception is distance-based for now; line-of-sight raycasts arrive with
- * the darkness mechanic in Phase 4, where they become meaningful.
- * Patrol randomness draws from the seeded run RNG via ctx.rng (Phase 3).
+ * Second enemy = new brain + tuning, zero system changes (the Phase 2 claim,
+ * now proven). Wraiths ignore the darkness sight penalty (ctx.aggroScale is
+ * fed as 1 by AISystem for wraiths — they ARE the dark) but walls still
+ * block their sight: gameplay clarity beats ghost physics.
  */
-export function createGhoulBrain(cfg: GhoulTuning): Brain {
+export function createWraithBrain(cfg: WraithTuning): Brain {
   const fsm = new Fsm<BrainContext>(
     {
       idle: {
@@ -31,9 +31,6 @@ export function createGhoulBrain(cfg: GhoulTuning): Brain {
 
       patrol: {
         onEnter: (ctx) => {
-          // Wander near HOME, not near wherever the last chase ended —
-          // this passively walks leashed ghouls back to their posts.
-          // Randomness comes from the run's seeded stream (§6), never Math.random.
           const { home } = ai(ctx);
           const angle = ctx.rng() * Math.PI * 2;
           const r = cfg.patrolRadius * (0.4 + ctx.rng() * 0.6);
@@ -53,25 +50,24 @@ export function createGhoulBrain(cfg: GhoulTuning): Brain {
       chase: {
         update: (ctx) => {
           const d = playerDist(ctx);
-          if (d > cfg.leashRadius) return 'idle'; // anti-kiting leash
+          if (d > cfg.leashRadius) return 'idle';
           if (d <= cfg.attackRange) return 'windup';
           moveToward(ctx, ctx.player.sprite, cfg.chaseSpeed);
           return undefined;
         },
       },
 
-      // Telegraphed strike: the pause + tint is the player's chance to react.
+      // Short telegraph — wraiths are fast but fragile; the counterplay is
+      // hitting them during the retreat, not dodging a long windup.
       windup: {
         onEnter: (ctx) => {
           ai(ctx).stateTimerMs = cfg.windupMs;
           ctx.self.sprite.setVelocity(0, 0);
-          ctx.self.sprite.setTint(0xd8b13f);
+          ctx.self.sprite.setAlpha(1); // solidifies to strike
         },
         update: (ctx) => {
           ai(ctx).stateTimerMs -= ctx.dtMs;
           if (ai(ctx).stateTimerMs > 0) return undefined;
-          ctx.self.sprite.clearTint();
-          // strikeRange > attackRange: a small backpedal doesn't cheat the hit.
           if (playerDist(ctx) <= cfg.strikeRange) {
             ctx.bus.emit(GameEvent.EntityDamaged, {
               targetId: ctx.player.id,
@@ -81,18 +77,26 @@ export function createGhoulBrain(cfg: GhoulTuning): Brain {
               knockbackForce: cfg.knockbackForce,
             });
           }
-          return 'recover';
+          return 'retreat';
         },
       },
 
-      recover: {
+      retreat: {
         onEnter: (ctx) => {
-          ai(ctx).stateTimerMs = cfg.recoverMs;
-          ctx.self.sprite.setVelocity(0, 0);
+          ai(ctx).stateTimerMs = cfg.retreatMs;
+          ctx.self.sprite.setAlpha(0.65); // fades while slipping away
         },
         update: (ctx) => {
           ai(ctx).stateTimerMs -= ctx.dtMs;
-          return ai(ctx).stateTimerMs <= 0 ? 'chase' : undefined;
+          // Flee directly away from the player.
+          const s = ctx.self.sprite;
+          const dx = s.x - ctx.player.sprite.x;
+          const dy = s.y - ctx.player.sprite.y;
+          const len = Math.hypot(dx, dy) || 1;
+          s.setVelocity((dx / len) * cfg.retreatSpeed, (dy / len) * cfg.retreatSpeed);
+          if (ai(ctx).stateTimerMs > 0) return undefined;
+          s.setAlpha(0.85);
+          return 'chase';
         },
       },
     },
@@ -110,16 +114,11 @@ export function createGhoulBrain(cfg: GhoulTuning): Brain {
 // -- tiny local helpers (brain-private) ------------------------------------
 
 function ai(ctx: BrainContext) {
-  if (!ctx.self.ai) throw new Error(`ghoulBrain: actor ${ctx.self.id} has no ai data`);
+  if (!ctx.self.ai) throw new Error(`wraithBrain: actor ${ctx.self.id} has no ai data`);
   return ctx.self.ai;
 }
 
-/**
- * Aggro needs proximity (scaled by zone darkness — ghouls see poorly in the
- * dark) AND line of sight. Once chasing, pursuit persists by leash alone:
- * breaking LoS shouldn't instantly reset an alerted hunter.
- */
-function canAggro(ctx: BrainContext, cfg: GhoulTuning): boolean {
+function canAggro(ctx: BrainContext, cfg: WraithTuning): boolean {
   return playerDist(ctx) < cfg.aggroRadius * ctx.aggroScale && ctx.canSeePlayer;
 }
 
@@ -131,7 +130,6 @@ function dist(a: Vec2Like, b: Vec2Like): number {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
-/** Steer toward a point; returns remaining distance. */
 function moveToward(ctx: BrainContext, target: Vec2Like, speed: number): number {
   const s = ctx.self.sprite;
   const d = dist(s, target);

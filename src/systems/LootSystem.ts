@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AssetKey } from '../config/assets';
-import { CHEST_LOOT, GHOUL_LOOT } from '../config/lootTables';
+import { CHEST_LOOT, LOOT_BY_ENEMY } from '../config/lootTables';
 import { LOOT_TUNING } from '../config/tuning';
 import { addItem } from '../core/inventory';
 import { rollLoot, type LootDrop, type LootTable } from '../core/loot';
@@ -48,9 +48,12 @@ export class LootSystem implements GameSystem {
     // Handlers only QUEUE; rolls happen in update() where ctx.rng is available —
     // keeps all randomness on the run's seeded stream (§6).
     this.unsubscribes = [
-      bus.on(GameEvent.EnemyDied, (e) =>
-        this.pending.push({ table: GHOUL_LOOT, x: e.x, y: e.y }),
-      ),
+      bus.on(GameEvent.EnemyDied, (e) => {
+        // Table per enemy type — an unknown type simply drops nothing
+        // (a valid design state: some enemies aren't loot piñatas).
+        const table = LOOT_BY_ENEMY[e.enemyType];
+        if (table) this.pending.push({ table, x: e.x, y: e.y });
+      }),
       bus.on(GameEvent.ChestOpened, (e) =>
         this.pending.push({ table: CHEST_LOOT, x: e.x, y: e.y }),
       ),

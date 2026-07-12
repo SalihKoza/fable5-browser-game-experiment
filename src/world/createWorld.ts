@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { AssetKey, MapLayer, SpawnName } from '../config/assets';
+import type { SolidFn } from '../core/grid';
 import type { Vec2Like } from '../core/state/GameState';
+import { isZoneId, type Zone } from '../core/zones';
 
 export interface World {
   map: Phaser.Tilemaps.Tilemap;
@@ -8,14 +10,24 @@ export interface World {
   walls: Phaser.Tilemaps.TilemapLayer;
   /** Player spawn point read from the Tiled object layer. */
   spawn: Vec2Like;
-  /** Enemy spawn points (may legitimately be empty on a safe map). */
-  enemySpawns: Vec2Like[];
+  ghoulSpawns: Vec2Like[];
+  wraithSpawns: Vec2Like[];
   /** Chest placements; id = Tiled object id (stable across runs → worldFlags). */
   chestSpawns: { id: string; x: number; y: number }[];
+  /** Static light sources (braziers) for the darkness pass. */
+  lights: Vec2Like[];
+  /** Atmosphere/perception regions from the zones layer. */
+  zones: Zone[];
+  /** Perception query for AI line-of-sight (tile coordinates). */
+  solidAt: SolidFn;
+  tileSize: number;
   /** Pixel size of the whole map — used for camera & physics bounds. */
   widthPx: number;
   heightPx: number;
 }
+
+/** Solid (collision) tile ids in the tileset: wall, mossy wall, tree. */
+const SOLID_TILES = [3, 4, 7];
 
 /**
  * Builds the world from the Tiled map (ARCHITECTURE.md §10). The map file is
@@ -39,30 +51,49 @@ export function createWorld(scene: Phaser.Scene): World {
   ) {
     throw new Error('World: expected CPU tilemap layers ground/walls');
   }
+  walls.setCollision(SOLID_TILES);
 
-  // Tiles 3 & 4 (stone / mossy stone) are solid — declared once, here.
-  walls.setCollision([3, 4]);
-
+  // -- spawns -------------------------------------------------------------
   const objects = map.getObjectLayer(MapLayer.Spawns)?.objects ?? [];
   const playerObj = objects.find((o) => o.name === SpawnName.Player);
   if (playerObj?.x == null || playerObj?.y == null)
     throw new Error('World: spawn object "player" missing from map');
 
-  const enemySpawns = objects
-    .filter((o) => o.name === SpawnName.Ghoul && o.x != null && o.y != null)
-    .map((o) => ({ x: o.x as number, y: o.y as number }));
+  const pointsNamed = (name: string): Vec2Like[] =>
+    objects
+      .filter((o) => o.name === name && o.x != null && o.y != null)
+      .map((o) => ({ x: o.x as number, y: o.y as number }));
 
   const chestSpawns = objects
     .filter((o) => o.name === SpawnName.Chest && o.x != null && o.y != null)
     .map((o) => ({ id: String(o.id), x: o.x as number, y: o.y as number }));
+
+  // -- zones (fail loud on unknown ids — the map/code contract) ------------
+  const zones: Zone[] = (map.getObjectLayer(MapLayer.Zones)?.objects ?? []).map((o) => {
+    if (!o.name || !isZoneId(o.name))
+      throw new Error(`World: unknown zone id "${o.name}" in zones layer`);
+    return {
+      id: o.name,
+      x: o.x ?? 0,
+      y: o.y ?? 0,
+      width: o.width ?? 0,
+      height: o.height ?? 0,
+    };
+  });
+  if (zones.length === 0) throw new Error('World: zones layer is empty');
 
   return {
     map,
     ground,
     walls,
     spawn: { x: playerObj.x, y: playerObj.y },
-    enemySpawns,
+    ghoulSpawns: pointsNamed(SpawnName.Ghoul),
+    wraithSpawns: pointsNamed(SpawnName.Wraith),
     chestSpawns,
+    lights: pointsNamed(SpawnName.Light),
+    zones,
+    solidAt: (tx, ty) => walls.hasTileAt(tx, ty),
+    tileSize: map.tileWidth,
     widthPx: map.widthInPixels,
     heightPx: map.heightInPixels,
   };

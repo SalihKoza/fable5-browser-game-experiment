@@ -12,6 +12,8 @@ export const GameEvent = {
   EntityDamaged: 'entity-damaged',
   /** Damage actually landed on the player (post i-frame check). */
   PlayerDamaged: 'player-damaged',
+  /** Player swung (hit or miss) — audio/FX hook. */
+  PlayerAttacked: 'player-attacked',
   EnemyDied: 'enemy-died',
   PlayerDied: 'player-died',
   ChestOpened: 'chest-opened',
@@ -33,6 +35,7 @@ export interface GameEventPayloads extends Record<string, unknown> {
     knockbackForce: number;
   };
   [GameEvent.PlayerDamaged]: { amount: number; sourceId: string };
+  [GameEvent.PlayerAttacked]: Record<string, never>;
   /** x/y = death position, captured before the sprite fades — loot spawns there. */
   [GameEvent.EnemyDied]: { entityId: string; enemyType: string; x: number; y: number };
   [GameEvent.PlayerDied]: { playTimeMs: number };
